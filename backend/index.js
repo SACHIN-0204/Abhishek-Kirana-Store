@@ -21,9 +21,6 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-app.get("/", (req, res) => {
-  res.send("Backend is running");
-});
 
 app.use("/api/auth", require("./routes/authRoutes"));
 app.use("/api/products", require("./routes/productRoutes"));
@@ -37,6 +34,10 @@ if (process.env.NODE_ENV === "production") {
   app.use((req, res) => {
     res.sendFile(path.resolve(__dirname, "../frontend/build/index.html"));
   });
+} else {
+  app.get("/", (req, res) => {
+  res.send("Backend is running");
+});
 }
 
 const PORT =  5000;
