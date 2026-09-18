@@ -468,3 +468,37 @@
   background: #ecfdf3;
   color: #166534;
 }
+
+
+/* Namkeen & wefers */
+/* Image zoom on hover */
+.product-image {
+  transition: transform 0.4s ease;
+}
+
+.product-card:hover .product-image {
+  transform: scale(1.08);
+}
+
+/* Fade-in-up entrance animation */
+@keyframes productFadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.product-card {
+  animation: productFadeInUp 0.5s ease both;
+}
+
+.carousel-item:nth-child(1) .product-card { animation-delay: 0.05s; }
+.carousel-item:nth-child(2) .product-card { animation-delay: 0.1s; }
+.carousel-item:nth-child(3) .product-card { animation-delay: 0.15s; }
+.carousel-item:nth-child(4) .product-card { animation-delay: 0.2s; }
+.carousel-item:nth-child(5) .product-card { animation-delay: 0.25s; }
+.carousel-item:nth-child(6) .product-card { animation-delay: 0.3s; }
