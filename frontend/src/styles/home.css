@@ -39,6 +39,11 @@ body {
     opacity: 0.95;
 }
 
+/* Content Section */
+.content-section {
+    margin-bottom: 40px;
+}
+
 /* Heading */
 
 .home-container h2 {
@@ -52,7 +57,7 @@ body {
 
 .product-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
     gap: 25px;
 }
 
@@ -119,7 +124,7 @@ body {
     }
 
     .product-grid {
-        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
     }
 }
 

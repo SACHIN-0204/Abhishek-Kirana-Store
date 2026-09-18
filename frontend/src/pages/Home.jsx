@@ -12,7 +12,7 @@ const Home = () => {
             try {
                 const res = await fetch('/api/products');
                 const data = await res.json();
-                setProducts(data.slice(0, 4)); //Featured products
+                setProducts(data.slice(0, 6)); //Featured products
             } catch (error){
                 console.error(error)
             } finally {
@@ -30,6 +30,20 @@ const Home = () => {
             <p>Descover the best products</p>
            </div>
         
+        <div className="content-section">
+           <h2>Ready To Cook</h2>
+          {loading ? (
+            <div>Loading...</div>
+           ) : (
+             <div className="product-grid">
+                  {products.map((product) => (
+                    <ProductCard  key={product._id} product={product}/>
+                  ))}
+             </div>
+           )}
+         </div>
+
+         <div className="content-section">   
            <h2>Featured Products</h2>
           {loading ? (
             <div>Loading...</div>
@@ -40,6 +54,9 @@ const Home = () => {
                   ))}
              </div>
            )}
+        </div>
+
+
         </div>
     )
 };

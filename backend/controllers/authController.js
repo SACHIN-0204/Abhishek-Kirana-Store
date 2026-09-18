@@ -17,9 +17,35 @@ const registerUser = async (req, res) => {
   const { username, email, password } = req.body;
 
   try {
+    if (!username || !email || !password) {
+      return res.status(400).json({ message: 'Username, email, and password are required' });
+    }
+
     const existingUser = await User.findOne({ email });
     if (existingUser) {
-      return res.status(400).json({ message: 'User already exists' });
+      if (existingUser.verified) {
+        return res.status(409).json({ message: 'User already exists' });
+      }
+
+      const salt = await bcrypt.genSalt(10);
+      existingUser.username = username;
+      existingUser.password = await bcrypt.hash(password, salt);
+      existingUser.otp = generateOTP();
+      existingUser.otpExpires = Date.now() + 10 * 60 * 1000;
+      await existingUser.save();
+      try {
+        await sendVerificationEmail(existingUser, existingUser.otp);
+      } catch (emailError) {
+        return res.status(503).json({
+          message: 'Registration could not send the verification email. Check the backend email configuration and try again.'
+        });
+      }
+
+      return res.status(200).json({
+        email: existingUser.email,
+        pendingVerification: true,
+        message: 'Your account is awaiting verification. A new OTP has been sent to your email.'
+      });
     }
 
     const salt = await bcrypt.genSalt(10);
@@ -36,7 +62,14 @@ const registerUser = async (req, res) => {
       otpExpires
     });
 
-    await sendVerificationEmail(user, otp);
+    try {
+      await sendVerificationEmail(user, otp);
+    } catch (emailError) {
+      await User.deleteOne({ _id: user._id });
+      return res.status(503).json({
+        message: 'Registration could not send the verification email. Check the backend email configuration and try again.'
+      });
+    }
 
     res.status(201).json({
       _id: user._id,

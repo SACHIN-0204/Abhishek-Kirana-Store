@@ -5,7 +5,6 @@ const path = require("path");
 const connectDB = require("./config/db");
 
 dotenv.config({ path: path.join(__dirname, ".env") });
-connectDB();
 
 const app = express();
 
@@ -14,7 +13,7 @@ app.use(cors({
     "http://localhost:3000",
     "http://127.0.0.1:3000",
     process.env.FRONTEND_URL
-  ],
+  ].filter(Boolean),
   credentials: true
 }));
 
@@ -36,12 +35,21 @@ if (process.env.NODE_ENV === "production") {
   });
 } else {
   app.get("/", (req, res) => {
-  res.send("Backend is running");
-});
+    res.send("Backend is running");
+  });
 }
 
-const PORT =  5000;
+const PORT = Number(process.env.PORT) || 5000;
 
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
+const startServer = async () => {
+  await connectDB();
+
+  app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
+  });
+};
+
+startServer().catch((error) => {
+  console.error("Failed to start server:", error);
+  process.exit(1);
 });

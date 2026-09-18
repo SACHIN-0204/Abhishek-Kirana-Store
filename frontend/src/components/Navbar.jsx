@@ -34,7 +34,7 @@ const Navbar = () => {
         <nav className="navbar">
             <div className="navbar-brand">
                <Link to="/" onClick={closeMenu}>
-                   <img src="/logo.png" alt="Abhishek Kirana Store logo" className="navbar-logo" />
+                   <img src="/logo3.jpeg" alt="Abhishek Kirana Store logo" className="navbar-logo" />
                    Abhishek Kirana Store
                </Link>
             </div>
