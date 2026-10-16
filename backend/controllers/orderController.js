@@ -1,6 +1,27 @@
 const Order = require("../models/Order");
 const User = require("../models/User");
 
+const mongoose = require("mongoose");
+const Product = require("../models/Product");
+
+const DELIVERY_FEE = 0; // ADJUST: flat delivery charge in ₹, if you have one
+
+// Put reserved stock back (used on cancel or failure)
+const restoreStock = async (items) => {
+    await Promise.all(
+        items.map((item) =>
+            Product.updateOne({ _id: item.productId }, { $inc: { stock: item.quantity } })
+        )
+    );
+};
+
+const stockMessage = (unavailable) =>
+    "Some items are not available in the quantity you chose: " +
+    unavailable
+        .map((u) => (u.available > 0 ? `${u.name} (only ${u.available} left)` : `${u.name} (unavailable)`))
+        .join(", ");
+
+
 const sendEmail = require("../utils/sendEmail");
 
 const formatOrderItems = (order) => {
@@ -92,27 +113,96 @@ const sendOrderEmail = async (order, eventType) => {
 // @route   POST /api/orders
 // @access  Private
 const createOrder = async (req, res) => {
+    const reserved = [];
+    let orderSaved = false;
+
     try {
-    const { orderItems, totalPrice, address, paymentMethod } = req.body;
-    if (!orderItems || orderItems.length === 0 || !totalPrice || !address) {
-        return res.status(400).json({ message: "Invalid order data" });
-    } 
-    else {
-        const order = new Order({
+        const { orderItems, address, paymentMethod } = req.body;
+
+        if (!Array.isArray(orderItems) || orderItems.length === 0 || !address) {
+            return res.status(400).json({ message: "Invalid order data" });
+        }
+
+        // 1. Clean the request: validate ids and quantities, merge duplicate products
+        const wanted = new Map();
+        for (const item of orderItems) {
+            const id = String(item.productId?._id || item.productId || "");
+            const quantity = Number(item.quantity);
+            if (!mongoose.Types.ObjectId.isValid(id) || !Number.isInteger(quantity) || quantity < 1) {
+                return res.status(400).json({ message: "Invalid order item" });
+            }
+            wanted.set(id, (wanted.get(id) || 0) + quantity);
+        }
+
+        // 2. Load the real products (real prices and stock) from the database
+        const products = await Product.find({ _id: { $in: [...wanted.keys()] } });
+        const productMap = new Map(products.map((p) => [String(p._id), p]));
+
+        // 3. Check availability
+        const unavailable = [];
+        for (const [id, quantity] of wanted) {
+            const product = productMap.get(id);
+            if (!product || product.isActive === false) {
+                unavailable.push({ productId: id, name: product?.name || "A product", available: 0 });
+            } else if (product.stock < quantity) {
+                unavailable.push({ productId: id, name: product.name, available: product.stock });
+            }
+        }
+        if (unavailable.length) {
+            return res.status(409).json({ message: stockMessage(unavailable), unavailable });
+        }
+
+        // 4. Reserve stock atomically. The condition stock >= quantity means two customers
+        //    can never both buy the last item.
+        for (const [id, quantity] of wanted) {
+            const updated = await Product.findOneAndUpdate(
+                { _id: id, isActive: { $ne: false }, stock: { $gte: quantity } },
+                { $inc: { stock: -quantity } },
+                { new: true }
+            );
+            if (!updated) {
+                await restoreStock(reserved); // undo what we reserved so far
+                reserved.length = 0;
+                const fresh = await Product.findById(id).select("name stock");
+                const problem = [{ productId: id, name: fresh?.name || "A product", available: fresh?.stock || 0 }];
+                return res.status(409).json({ message: stockMessage(problem), unavailable: problem });
+            }
+            reserved.push({ productId: id, quantity });
+        }
+
+        // 5. Build the order from DATABASE prices, never from the browser
+        const items = [...wanted].map(([id, quantity]) => ({
+            productId: id,
+            quantity,
+            price: productMap.get(id).price,
+        }));
+        const itemsTotal = items.reduce((sum, i) => sum + i.price * i.quantity, 0);
+        const totalPrice = Math.round((itemsTotal + DELIVERY_FEE) * 100) / 100;
+
+        const order = await Order.create({
             user: req.user._id,
-            orderItems,
+            orderItems: items,
             totalPrice,
-            address, 
-            paymentMethod,   
+            address,
+            paymentMethod,
         });
-        await order.save();
+        orderSaved = true;
 
-        const populatedOrder = await Order.findById(order._id).populate("user", "name email").populate("orderItems.productId", "name");
-        await sendOrderEmail(populatedOrder, "order-confirmed");
+        // 6. An email failure must not make a saved order look like a failure
+        try {
+            const populatedOrder = await Order.findById(order._id)
+                .populate("user", "name email")
+                .populate("orderItems.productId", "name");
+            await sendOrderEmail(populatedOrder, "order-confirmed");
+        } catch (emailError) {
+            console.error("Order confirmation email failed:", emailError);
+        }
+
         res.status(201).json({ message: "Order created successfully", order });
-    }
-
     } catch (error) {
+        if (!orderSaved && reserved.length) {
+            await restoreStock(reserved).catch((e) => console.error("Stock rollback failed:", e));
+        }
         res.status(500).json({ message: error.message });
     }
 };
@@ -138,31 +228,45 @@ const getOrders = async (req, res) =>{
 const updateOrderStatus = async (req, res) => {
     try {
         const { status } = req.body;
-        const order = await Order.findById(req.params.id).populate("user", "name email");
+        if (!status) return res.status(400).json({ message: "Status is required" });
+
+        const order = await Order.findById(req.params.id)
+            .populate("user", "name email")
+            .populate("orderItems.productId", "name");
 
         if (!order) {
-            return res.status(404).json({ message: 'Order not found' });
+            return res.status(404).json({ message: "Order not found" });
         }
 
         const previousStatus = order.status;
+
+        if (previousStatus === status) {
+            return res.json({ message: "Order status unchanged", order });
+        }
+        // Stock was already returned when it was cancelled, so don't allow reopening
+        if (previousStatus === "cancelled") {
+            return res.status(400).json({ message: "A cancelled order cannot be reopened" });
+        }
+
         order.status = status;
         await order.save();
 
-        if (previousStatus !== status) {
-            try {
-                if (status === "cancelled") {
-                    await sendOrderEmail(order, "order-cancelled");
-                } else {
-                    await sendOrderEmail(order, "status-updated");
-                }
-            } catch (emailError) {
-                console.error("Order status email failed:", emailError);
-            }
+        if (status === "cancelled") {
+            const items = order.orderItems
+                .map((i) => ({ productId: i.productId?._id, quantity: i.quantity }))
+                .filter((i) => i.productId); // skip products that were deleted
+            await restoreStock(items);
         }
 
-        res.json({ message: 'Order status updated', order });
+        try {
+            await sendOrderEmail(order, status === "cancelled" ? "order-cancelled" : "status-updated");
+        } catch (emailError) {
+            console.error("Order status email failed:", emailError);
+        }
+
+        res.json({ message: "Order status updated", order });
     } catch (error) {
-        res.status(500).json({ message: 'Error updating order status', error });
+        res.status(500).json({ message: error.message || "Error updating order status" });
     }
 };
 

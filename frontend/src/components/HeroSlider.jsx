@@ -12,13 +12,13 @@ const SLIDES = [
         cta: "Shop Dairy",
     },
     {
-        title: "Latest Electronics & Gadgets",
-        subtitle: "Everyday tech essentials — launching soon on Abhishek Kirana Store.",
+        title: "Navratri Specials & Grocery Deals",
+        subtitle: "Fresh fruits, vrat essentials, dry fruits & festive groceries — special deals for Navratri.",
         image:
-            "https://images.unsplash.com/photo-1678851836066-dc27614cc56b?auto=format&fit=crop&w=1600&q=80",
-        link: null,          // no live route yet
-        cta: "Coming Soon",
-        disabled: true,
+        "https://res.cloudinary.com/dsz1w0it0/image/upload/v1792141375/Navratri_Grocery_Deals_Banner.png",
+         link: "/shop",
+        cta: "Shop Navratri Deals",
+        disabled: false,
     },
     {
         title: "Grocery Essentials, All in One Place",

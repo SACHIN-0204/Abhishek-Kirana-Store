@@ -1,10 +1,18 @@
 import React, { useEffect, useState, useContext } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import {
+  containerStyle, headerStyle, titleStyle, subtitleStyle, formStyle, fieldRowStyle,
+  fieldStyle, labelStyle, inputStyle, uploadBoxStyle, uploadLabelStyle,
+  uploadInputStyle, submitStyle,
+} from './productFormStyles';
+import { useDispatch } from 'react-redux';
+import { fetchProducts } from '../redux/productsSlice';
 
 const AddProduct = () => {
   const { user } = useContext(AuthContext);
   const navigate = useNavigate();
+  const dispatch = useDispatch();
   
   const [formData, setFormData] = useState({
     name: '', description: '', price: '', category: '', stock: ''
@@ -44,9 +52,10 @@ const AddProduct = () => {
       const responseData = await res.json();
       
       if (res.ok) {
-        alert('Product created successfully with Cloudinary Image URL!');
-        navigate('/shop');
-      } else {
+          dispatch(fetchProducts());
+          alert('Product created successfully!');
+          navigate('/shop');
+      }  else {
         alert(responseData.message || 'Error creating product');
       }
     } catch (error) {
@@ -152,96 +161,5 @@ const AddProduct = () => {
   );
 };
 
-const containerStyle = {
-  maxWidth: '720px',
-  margin: '40px auto',
-  padding: '32px',
-  background: '#ffffff',
-  borderRadius: '16px',
-  border: '1px solid #e5e7eb',
-  boxShadow: '0 18px 50px rgba(15, 23, 42, 0.06)',
-};
-
-const headerStyle = {
-  marginBottom: '24px',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'space-between',
-};
-
-const titleStyle = {
-  margin: 0,
-  color: '#111827',
-  fontSize: '1.95rem',
-};
-
-const subtitleStyle = {
-  margin: '8px 0 0',
-  color: '#6b7280',
-  lineHeight: 1.6,
-};
-
-const formStyle = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '20px',
-};
-
-const fieldRowStyle = {
-  display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-  gap: '20px',
-};
-
-const fieldStyle = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '10px',
-};
-
-const labelStyle = {
-  color: '#4b5563',
-  fontSize: '0.95rem',
-};
-
-const inputStyle = {
-  padding: '14px 16px',
-  background: '#f8fafc',
-  border: '1px solid #d1d5db',
-  borderRadius: '12px',
-  color: '#111827',
-  fontSize: '1rem',
-  outline: 'none',
-};
-
-const uploadBoxStyle = {
-  padding: '18px',
-  border: '1px dashed #d1d5db',
-  borderRadius: '14px',
-  background: '#f9fafb',
-};
-
-const uploadLabelStyle = {
-  display: 'block',
-  marginBottom: '14px',
-  color: '#4b5563',
-  fontSize: '0.95rem',
-};
-
-const uploadInputStyle = {
-  color: '#111827',
-};
-
-const submitStyle = {
-  marginTop: '8px',
-  padding: '14px 18px',
-  borderRadius: '12px',
-  background: '#111827',
-  border: 'none',
-  color: '#ffffff',
-  fontWeight: '700',
-  cursor: 'pointer',
-  transition: 'transform 150ms ease, opacity 150ms ease',
-};
 
 export default AddProduct;

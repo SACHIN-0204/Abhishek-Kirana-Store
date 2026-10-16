@@ -18,9 +18,11 @@ import MyOrders from './pages/MyOrders';
 import AdminDashboard from './admin/AdminDashboard';
 import AddProducts from './admin/AddProducts';
 import AdminOrders from './admin/AdminOrders';
-import AdminProducts from './admin/AdminProducts';
+// import AdminProducts from './admin/AdminProducts';
+import ManageProducts from './admin/ManageProducts';
 import AdminUsers from './admin/AdminUsers';
 import EditProduct from './admin/EditProduct';
+import { ToastProvider } from "./components/Toast";
 
 function App() {
   const dispatch = useDispatch();
@@ -31,6 +33,7 @@ function App() {
 
   return (
    <Router>
+    <ToastProvider >
      <Navbar />
      <div className="main-content">
         <Routes>
@@ -48,12 +51,14 @@ function App() {
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/admin/add-product" element={<AddProducts />} />
           <Route path="/admin/orders" element={<AdminOrders />} />
-          <Route path="/admin/products" element={<AdminProducts />} />
+          {/* <Route path="/admin/products" element={<AdminProducts />} /> */}
+          <Route path="/admin/products" element={<ManageProducts />} />
           <Route path="/admin/users" element={<AdminUsers />} />
           <Route path="/admin/edit-product/:id" element={<EditProduct />} />
         </Routes>
       </div> 
      <Footer />
+     </ToastProvider>
    </Router>
   );
 }
